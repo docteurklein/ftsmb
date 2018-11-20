@@ -7,7 +7,8 @@
 
 ## import your content
 
-> This uses chromium's sqlite history. sqlite will fail to open this file is chromium is open.
+> This uses chromium's sqlite history. sqlite will fail to open this file if chromium is open.
+
 
     sqlite3 ~/.config/chromium/Default/History \
         "select url from urls where url like '%twitter.com/%status/%'" \
