@@ -1,5 +1,6 @@
 create extension "pipelinedb";
 create extension "unaccent";
+create extension "http";
 
 create text search configuration fr ( copy = french );
 alter text search configuration fr alter mapping
@@ -17,16 +18,17 @@ create text search configuration usimple ( copy = simple );
 alter text search configuration usimple alter mapping
 for hword, hword_part, word with unaccent, simple;
 
-drop foreign table if exists resource_stream cascade;
-create foreign table resource_stream (
+drop foreign table if exists url_stream cascade;
+create foreign table url_stream (
   url text,
-  content text,
   language text
 ) server pipelinedb;
 
+select http_set_curlopt('CURLOPT_TIEMOUT', '2');
+
 create view resources with (action=materialize) as
     select url,
-    to_tsvector(language::regconfig, content) as indexed
-    from resource_stream
+    to_tsvector(coalesce(language, 'en')::regconfig, (select content from http_get(url))) as indexed
+    from url_stream
 ;
 create index tsvector_idx ON resources USING gin(indexed);

@@ -9,12 +9,18 @@ RUN cd pipelinedb-1.0.0-6/ && \
     make USE_PGXS=1 && \
     make install
 
+RUN apk add --no-cache curl-dev
+
+RUN curl -sL https://github.com/pramsey/pgsql-http/archive/v1.3.0.tar.gz | tar xz
+RUN cd pgsql-http-1.3.0 && \
+    make && \
+    make install
 
 ##################################
 
 FROM alpine:edge
 
-RUN apk add --no-cache postgresql postgresql-contrib zeromq-dev
+RUN apk add --no-cache postgresql postgresql-contrib zeromq-dev curl-dev
 
 COPY --from=build /usr/lib/postgresql/* /usr/lib/postgresql/
 COPY --from=build /usr/share/postgresql/extension/* /usr/share/postgresql/extension/
