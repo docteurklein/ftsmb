@@ -58,14 +58,3 @@ create view api.resources with (action=materialize) as
 ;
 create index concurrently tsvector_idx ON api.resources USING gin(indexed);
 
-create role web_anon nologin;
-create role admin nologin;
-grant web_anon to postgres;
-grant admin to postgres;
-
-grant usage on schema api to web_anon;
-grant usage on schema api to admin;
-
-grant select on api.resources to web_anon;
-grant all on api.input_stream to admin;
-

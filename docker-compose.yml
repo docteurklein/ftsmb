@@ -14,26 +14,9 @@ services:
         secrets:
             - postgres_password
 
-
-    postgrest:
-        image: postgrest/postgrest
-        ports:
-            - '3000:3000'
-        environment:
-            PGRST_DB_URI: postgres://postgres@postgres:5432/postgres
-            PGRST_DB_SCHEMA: api
-            PGRST_DB_ANON_ROLE: web_anon
-            PGRST_JWT_SECRET: '@/run/secrets/jwt_secret'
-            POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-        secrets:
-            - jwt_secret
-            - postgres_password
-
 volumes:
     postgres: ~
 
 secrets:
-    jwt_secret:
-        file: .jwt_secret
     postgres_password:
         file: .postgres_password
