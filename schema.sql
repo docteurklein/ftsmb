@@ -1,26 +1,28 @@
-create extension "pipelinedb";
-create extension "unaccent";
-create extension "http";
-create extension "pg_trgm";
+create extension if not exists "pipelinedb";
+create extension if not exists "unaccent";
+create extension if not exists "http";
+create extension if not exists "pg_trgm";
 
-create text search configuration fr ( copy = french );
-alter text search configuration fr alter mapping
+create schema if not exists api;
+
+create text search configuration api.fr ( copy = french );
+alter text search configuration api.fr alter mapping
 for hword, hword_part, word with unaccent, french_stem;
 
-create text search configuration en ( copy = english );
-alter text search configuration en alter mapping
+create text search configuration api.en ( copy = english );
+alter text search configuration api.en alter mapping
 for hword, hword_part, word with unaccent, english_stem;
 
-create text search configuration de ( copy = german );
-alter text search configuration de alter mapping
+create text search configuration api.de ( copy = german );
+alter text search configuration api.de alter mapping
 for hword, hword_part, word with unaccent, german_stem;
 
-create text search configuration usimple ( copy = simple );
-alter text search configuration usimple alter mapping
+create text search configuration api.usimple ( copy = simple );
+alter text search configuration api.usimple alter mapping
 for hword, hword_part, word with unaccent, simple;
 
-drop foreign table if exists input_stream cascade;
-create foreign table public.input_stream (
+drop foreign table if exists api.input_stream cascade;
+create foreign table api.input_stream (
     uri text,
     language text,
     content text,
@@ -41,10 +43,10 @@ select http_set_curlopt('CURLOPT_TIMEOUT', '2');
 --     end
 -- $$ language plpgsql parallel unsafe;
 
-create view public.resources with (action=materialize) as
+create view api.resources with (action=materialize) as
     select uri,
-    to_tsvector(coalesce(language, 'en')::regconfig, response.content) as indexed
-    from public.input_stream input
+    to_tsvector(coalesce(language, 'api.en')::regconfig, response.content) as indexed
+    from api.input_stream input
     join coalesce(
         case when input.content is not null then
             (uri, 200, coalesce(input.content_type, 'text/html'), null, input.content)::http_response
@@ -54,4 +56,16 @@ create view public.resources with (action=materialize) as
     where status = 200
     and response.content_type like 'text/%'
 ;
-create index concurrently tsvector_idx ON public.resources USING gin(indexed);
+create index concurrently tsvector_idx ON api.resources USING gin(indexed);
+
+create role web_anon nologin;
+create role admin nologin;
+grant web_anon to postgres;
+grant admin to postgres;
+
+grant usage on schema api to web_anon;
+grant usage on schema api to admin;
+
+grant select on api.resources to web_anon;
+grant all on api.input_stream to admin;
+
