@@ -20,17 +20,17 @@ alter text search configuration usimple alter mapping
 for hword, hword_part, word with unaccent, simple;
 
 drop foreign table if exists input_stream cascade;
-create foreign table input_stream (
+create foreign table public.input_stream (
     uri text,
     language text,
     content text,
-    type text
+    content_type text
 ) server pipelinedb;
 
 select http_set_curlopt('CURLOPT_TIMEOUT', '2');
 
--- drop function if exists get;
--- create function get(uri text) returns http_response as $$
+-- drop function if exists try_get;
+-- create function try_get(uri text) returns http_response as $$
 --     begin
 --         raise info 'fetching uri: %', uri;
 --         return http_get(uri);
@@ -41,15 +41,17 @@ select http_set_curlopt('CURLOPT_TIMEOUT', '2');
 --     end
 -- $$ language plpgsql parallel unsafe;
 
-create view resources with (action=materialize) as
+create view public.resources with (action=materialize) as
     select uri,
     to_tsvector(coalesce(language, 'en')::regconfig, response.content) as indexed
-    from input_stream input
-    left join coalesce(
-        (case when input.content is not null then (uri, 200, coalesce(input.type, 'text/html'), null, input.content)::http_response else null end),
+    from public.input_stream input
+    join coalesce(
+        case when input.content is not null then
+            (uri, 200, coalesce(input.content_type, 'text/html'), null, input.content)::http_response
+        end,
         http_get(uri)
     ) response using (uri)
     where status = 200
-    and content_type like 'text/%'
+    and response.content_type like 'text/%'
 ;
-create index concurrently tsvector_idx ON resources USING gin(indexed);
+create index concurrently tsvector_idx ON public.resources USING gin(indexed);

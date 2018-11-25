@@ -1,0 +1,26 @@
+diff --git a/src/backend/access/transam/xact.c b/src/backend/access/transam/xact.c
+index d967400384..fd34a8f74b 100644
+--- a/src/backend/access/transam/xact.c
++++ b/src/backend/access/transam/xact.c
+@@ -4170,21 +4170,6 @@ BeginInternalSubTransaction(const char *name)
+ {
+ 	TransactionState s = CurrentTransactionState;
+ 
+-	/*
+-	 * Workers synchronize transaction state at the beginning of each parallel
+-	 * operation, so we can't account for new subtransactions after that
+-	 * point. We might be able to make an exception for the type of
+-	 * subtransaction established by this function, which is typically used in
+-	 * contexts where we're going to release or roll back the subtransaction
+-	 * before proceeding further, so that no enduring change to the
+-	 * transaction state occurs. For now, however, we prohibit this case along
+-	 * with all the others.
+-	 */
+-	if (IsInParallelMode())
+-		ereport(ERROR,
+-				(errcode(ERRCODE_INVALID_TRANSACTION_STATE),
+-				 errmsg("cannot start subtransactions during a parallel operation")));
+-
+ 	switch (s->blockState)
+ 	{
+ 		case TBLOCK_STARTED:

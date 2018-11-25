@@ -11,7 +11,7 @@
 
     sqlite3 ~/.config/chromium/Default/History \
         "select url from urls where url like '%twitter.com/%status/%'" \
-        | psql 'host=0 user=postgres' -c '\copy url_stream(url) from stdin with (format csv)'
+        | psql 'host=0 user=postgres' -c '\copy url_stream(url) from stdin'
 
 
 ## profit
