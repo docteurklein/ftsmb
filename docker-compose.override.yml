@@ -1,0 +1,13 @@
+version: '3.4'
+
+services:
+    postgres:
+        ports:
+            - '5432:5432'
+        volumes:
+            - ./hba.conf:/etc/postgres.hba
+            - ./postgres.conf:/etc/postgres.conf
+
+secrets:
+    postgres_password:
+        file: .postgres_password
