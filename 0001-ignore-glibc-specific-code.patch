@@ -1,0 +1,57 @@
+From 6efe04363f0a931bbd2e4c9eb61a7a1a1847d570 Mon Sep 17 00:00:00 2001
+From: Klein Florian <florian.klein@free.fr>
+Date: Sun, 18 Nov 2018 23:07:37 +0100
+Subject: [PATCH] ignore glibc specific code
+
+Signed-off-by: Klein Florian <florian.klein@free.fr>
+---
+ Makefile        | 2 +-
+ src/scheduler.c | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 9f4f4b76..79ce82d2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -9,7 +9,7 @@ REGRESS = $(EXTENSION)
+ 
+ DATA = pipelinedb--1.0.0.sql
+ EXTRA_CLEAN = src/test/regress/expected/$(REGRESS).out src/test/regress/sql/$(REGRESS).sql
+-SHLIB_LINK += /usr/lib/libzmq.a -lstdc++
++SHLIB_LINK += -lzmq -lstdc++
+ 
+ ifdef USE_PGXS
+ PG_CPPFLAGS += -I./include -I$(shell $(PG_CONFIG) --includedir)
+diff --git a/src/scheduler.c b/src/scheduler.c
+index 9485829f..551589bc 100644
+--- a/src/scheduler.c
++++ b/src/scheduler.c
+@@ -6,7 +6,9 @@
+  *
+  *-------------------------------------------------------------------------
+  */
++#ifdef GLIBC
+ #include <execinfo.h>
++#endif
+ #include <math.h>
+ #include <sys/resource.h>
+ #include <time.h>
+@@ -126,6 +128,7 @@ ContQueryDatabaseMetadataSize(void)
+ void
+ debug_segfault(SIGNAL_ARGS)
+ {
++#ifdef GLIBC
+ 	void *array[32];
+ 	size_t size = backtrace(array, 32);
+ 	fprintf(stderr, "Segmentation fault (PID %d)\n", MyProcPid);
+@@ -134,6 +137,7 @@ debug_segfault(SIGNAL_ARGS)
+ 	fprintf(stderr, "query: %s\n", debug_query_string);
+ 	fprintf(stderr, "backtrace:\n");
+ 	backtrace_symbols_fd(array, size, STDERR_FILENO);
++#endif
+ 
+ #ifdef SLEEP_ON_ASSERT
+ 
+-- 
+2.19.0
+

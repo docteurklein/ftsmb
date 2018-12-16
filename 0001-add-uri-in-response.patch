@@ -1,0 +1,55 @@
+From c602e08de4d7830ef66a280fec2778f3128dab1f Mon Sep 17 00:00:00 2001
+From: Klein Florian <florian.klein@free.fr>
+Date: Wed, 21 Nov 2018 21:26:14 +0100
+Subject: [PATCH] add uri in response
+
+---
+ http--1.3.sql |  1 +
+ http.c        | 12 ++++++++----
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/http--1.3.sql b/http--1.3.sql
+index bb07c55..c49df02 100644
+--- a/http--1.3.sql
++++ b/http--1.3.sql
+@@ -22,6 +22,7 @@ CREATE TYPE http_header AS (
+ );
+ 
+ CREATE TYPE http_response AS (
++    uri VARCHAR,
+     status INTEGER,
+     content_type VARCHAR,
+     headers http_header[],
+diff --git a/http.c b/http.c
+index 5b25860..47ee963 100644
+--- a/http.c
++++ b/http.c
+@@ -95,10 +95,11 @@ enum {
+ 
+ /* Components (and postitions) of the http_response tuple type */
+ enum {
+-	RESP_STATUS = 0,
+-	RESP_CONTENT_TYPE = 1,
+-	RESP_HEADERS = 2,
+-	RESP_CONTENT = 3
++        RESP_URI = 0,
++        RESP_STATUS = 1,
++        RESP_CONTENT_TYPE = 2,
++        RESP_HEADERS = 3,
++        RESP_CONTENT = 4
+ } http_response_type;
+ 
+ /* Components (and postitions) of the http_header tuple type */
+@@ -1146,6 +1147,9 @@ Datum http_request(PG_FUNCTION_ARGS)
+ 	values = palloc0(sizeof(Datum)*ncolumns);
+ 	nulls = palloc0(sizeof(bool)*ncolumns);
+ 
++        values[RESP_URI] = CStringGetTextDatum(uri);
++        nulls[RESP_URI] = false;
++
+ 	/* Status code */
+ 	status = long_status;
+ 	values[RESP_STATUS] = Int32GetDatum(status);
+-- 
+2.19.0
+

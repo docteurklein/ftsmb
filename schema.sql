@@ -1,28 +1,28 @@
+
 create extension if not exists "pipelinedb";
 create extension if not exists "unaccent";
 create extension if not exists "http";
 create extension if not exists "pg_trgm";
 
-create schema if not exists api;
+drop text search dictionary if exists english_hunspell cascade;
+create text search dictionary english_hunspell (
+    template = ispell,
+    DictFile = en_us,
+    AffFile = en_us,
+    Stopwords = english
+);
+drop text search dictionary if exists english_snowball cascade;
+create text search dictionary english_snowball (
+    template = snowball,
+    language = english
+);
+drop text search configuration if exists en cascade;
+create text search configuration en ( copy = english );
+alter text search configuration en alter mapping
+for hword, hword_part, word with unaccent, english_hunspell;
 
-create text search configuration api.fr ( copy = french );
-alter text search configuration api.fr alter mapping
-for hword, hword_part, word with unaccent, french_stem;
-
-create text search configuration api.en ( copy = english );
-alter text search configuration api.en alter mapping
-for hword, hword_part, word with unaccent, english_stem;
-
-create text search configuration api.de ( copy = german );
-alter text search configuration api.de alter mapping
-for hword, hword_part, word with unaccent, german_stem;
-
-create text search configuration api.usimple ( copy = simple );
-alter text search configuration api.usimple alter mapping
-for hword, hword_part, word with unaccent, simple;
-
-drop foreign table if exists api.input_stream cascade;
-create foreign table api.input_stream (
+drop foreign table if exists input_stream cascade;
+create foreign table input_stream (
     uri text,
     language text,
     content text,
@@ -41,12 +41,15 @@ select http_set_curlopt('CURLOPT_TIMEOUT', '2');
 --             raise info 'uri failed: %', uri;
 --         return null;
 --     end
--- $$ language plpgsql parallel unsafe;
+-- $$ language plpgsql parallel safe;
 
-create view api.resources with (action=materialize) as
+drop view if exists resources;
+create view resources with (action=materialize) as
     select uri,
-    to_tsvector(coalesce(language, 'api.en')::regconfig, response.content) as indexed
-    from api.input_stream input
+    response.content,
+    to_tsvector(coalesce(language, 'en')::regconfig, uri || ' ' || response.content) as indexed,
+    coalesce(language, 'en') as language
+    from input_stream input
     join coalesce(
         case when input.content is not null then
             (uri, 200, coalesce(input.content_type, 'text/html'), null, input.content)::http_response
@@ -56,5 +59,17 @@ create view api.resources with (action=materialize) as
     where status = 200
     and response.content_type like 'text/%'
 ;
-create index concurrently tsvector_idx ON api.resources USING gin(indexed);
+create index concurrently tsvector_idx ON resources USING gin(indexed);
 
+\set password `cat /run/secrets/postgres_password`
+alter user postgres with encrypted password :'password';
+
+drop function if exists search;
+create function search(query text, out uri text, out language text, out headline text) returns setof record as $$
+    select uri, language, regexp_replace(ts_headline(language::regconfig, content, websearch_to_tsquery(language::regconfig, query),
+        'StartSel="\033[1;4m", StopSel="\033[0m",
+        MaxWords=35, MinWords=15, ShortWord=3, HighlightAll=false,
+        MaxFragments=2, FragmentDelimiter=" ... "'), '\s+', ' ', 'g')
+    from resources
+    where indexed @@ websearch_to_tsquery(query)
+$$ language sql;
