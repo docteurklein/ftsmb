@@ -48,7 +48,8 @@ create view resources with (action=materialize) as
     select uri,
     response.content,
     to_tsvector(coalesce(language, 'en')::regconfig, uri || ' ' || response.content) as indexed,
-    coalesce(language, 'en') as language
+    coalesce(language, 'en') as language,
+    pg_notify('resource_indexed', uri)::text as notify
     from input_stream input
     join coalesce(
         case when input.content is not null then
