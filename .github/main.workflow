@@ -3,7 +3,7 @@ workflow "Run gcloud Login" {
   resolves = "Load credentials"
 }
 
-action "Setup Google Cloud 2" {
+action "Setup Google Cloud" {
   uses = "docker://github/gcloud-auth"
   secrets = ["GCLOUD_AUTH"]
 }
